@@ -84,8 +84,9 @@ define([
     var SCALE_BY_DISTANCE_INDEX = Billboard.SCALE_BY_DISTANCE_INDEX;
     var TRANSLUCENCY_BY_DISTANCE_INDEX = Billboard.TRANSLUCENCY_BY_DISTANCE_INDEX;
     var PIXEL_OFFSET_SCALE_BY_DISTANCE_INDEX = Billboard.PIXEL_OFFSET_SCALE_BY_DISTANCE_INDEX;
-    var DISTANCE_DISPLAY_CONDITION_INDEX = Billboard.DISTANCE_DISPLAY_CONDITION_INDEX;
+    var DISTANCE_DISPLAY_CONDITION_INDEX = Billboard.DISTANCE_DISPLAY_CONDITION;
     var DISABLE_DEPTH_DISTANCE = Billboard.DISABLE_DEPTH_DISTANCE;
+    var TEXTURE_OFFSET = Billboard.TEXTURE_OFFSET;
     var NUMBER_OF_PROPERTIES = Billboard.NUMBER_OF_PROPERTIES;
 
     var attributeLocations;
@@ -100,7 +101,8 @@ define([
         scaleByDistance : 6,
         pixelOffsetScaleByDistance : 7,
         distanceDisplayConditionAndDisableDepth : 8,
-        a_batchId : 9
+        textureOffset : 9,
+        a_batchId : 10
     };
 
     var attributeLocationsInstanced = {
@@ -114,7 +116,8 @@ define([
         scaleByDistance : 7,
         pixelOffsetScaleByDistance : 8,
         distanceDisplayConditionAndDisableDepth : 9,
-        a_batchId : 10
+        textureOffset : 10,
+        a_batchId : 11
     };
 
     /**
@@ -311,7 +314,8 @@ define([
             BufferUsage.STATIC_DRAW, // SCALE_BY_DISTANCE_INDEX
             BufferUsage.STATIC_DRAW, // TRANSLUCENCY_BY_DISTANCE_INDEX
             BufferUsage.STATIC_DRAW, // PIXEL_OFFSET_SCALE_BY_DISTANCE_INDEX
-            BufferUsage.STATIC_DRAW  // DISTANCE_DISPLAY_CONDITION_INDEX
+            BufferUsage.STATIC_DRAW, // DISTANCE_DISPLAY_CONDITION_INDEX
+            BufferUsage.STATIC_DRAW  // TEXTURE_OFFSET
         ];
 
         this._highlightColor = Color.clone(Color.WHITE); // Only used by Vector3DTilePoints
@@ -745,6 +749,11 @@ define([
             componentsPerAttribute : 3,
             componentDatatype : ComponentDatatype.FLOAT,
             usage : buffersUsage[DISTANCE_DISPLAY_CONDITION_INDEX]
+        }, {
+            index : attributeLocations.textureOffset,
+            componentsPerAttribute : 4,
+            componentDatatype : ComponentDatatype.FLOAT,
+            usage : buffersUsage[TEXTURE_OFFSET]
         }];
 
         // Instancing requires one non-instanced attribute.
@@ -1205,6 +1214,44 @@ define([
         }
     }
 
+    function writeTextureOffset(billboardCollection, context, textureAtlasCoordinates, vafWriters, billboard) {
+        var i;
+        var writer = vafWriters[attributeLocations.textureOffset];
+
+        var minX = 0;
+        var minY = 0;
+        var width = 0;
+        var height = 0;
+        var index = billboard._imageIndex;
+        if (index !== -1) {
+            var imageRectangle = textureAtlasCoordinates[index];
+
+            //>>includeStart('debug', pragmas.debug);
+            if (!defined(imageRectangle)) {
+                throw new DeveloperError('Invalid billboard image index: ' + index);
+            }
+            //>>includeEnd('debug');
+
+            minX = imageRectangle.x;
+            minY = imageRectangle.y;
+            width = imageRectangle.width;
+            height = imageRectangle.height;
+        }
+        var maxX = minX + width;
+        var maxY = minY + height;
+
+        if (billboardCollection._instanced) {
+            i = billboard._index;
+            writer(i, minX, minY, maxX, maxY);
+        } else {
+            i = billboard._index * 4;
+            writer(i + 0, minX, minY, maxX, maxY);
+            writer(i + 1, minX, minY, maxX, maxY);
+            writer(i + 2, minX, minY, maxX, maxY);
+            writer(i + 3, minX, minY, maxX, maxY);
+        }
+    }
+
     function writeBatchId(billboardCollection, context, textureAtlasCoordinates, vafWriters, billboard) {
         if (!defined(billboardCollection._batchTable)) {
             return;
@@ -1235,6 +1282,7 @@ define([
         writeScaleByDistance(billboardCollection, context, textureAtlasCoordinates, vafWriters, billboard);
         writePixelOffsetScaleByDistance(billboardCollection, context, textureAtlasCoordinates, vafWriters, billboard);
         writeDistanceDisplayConditionAndDepthDisable(billboardCollection, context, textureAtlasCoordinates, vafWriters, billboard);
+        writeTextureOffset(billboardCollection, context, textureAtlasCoordinates, vafWriters, billboard);
         writeBatchId(billboardCollection, context, textureAtlasCoordinates, vafWriters, billboard);
     }
 
@@ -1434,6 +1482,10 @@ define([
                 writers.push(writeDistanceDisplayConditionAndDepthDisable);
             }
 
+            if (properties[IMAGE_INDEX_INDEX]) {
+                writers.push(writeTextureOffset);
+            }
+
             var numWriters = writers.length;
             vafWriters = this._vaf.writers;
 
@@ -1505,7 +1557,7 @@ define([
             if (this._blendOption === BlendOption.OPAQUE || this._blendOption === BlendOption.OPAQUE_AND_TRANSLUCENT) {
                 this._rsOpaque = RenderState.fromCache({
                     depthTest : {
-                        enabled : true,
+                        enabled : false,
                         func : WebGLConstants.LESS
                     },
                     depthMask : true
@@ -1523,7 +1575,7 @@ define([
             if (this._blendOption === BlendOption.TRANSLUCENT || this._blendOption === BlendOption.OPAQUE_AND_TRANSLUCENT) {
                 this._rsTranslucent = RenderState.fromCache({
                     depthTest : {
-                        enabled : true,
+                        enabled : false,
                         func : (useTranslucentDepthMask ? WebGLConstants.LEQUAL : WebGLConstants.LESS)
                     },
                     depthMask : useTranslucentDepthMask,

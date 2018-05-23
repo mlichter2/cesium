@@ -10,11 +10,18 @@ attribute vec4 eyeOffset;                                  // eye offset in mete
 attribute vec4 scaleByDistance;                            // near, nearScale, far, farScale
 attribute vec4 pixelOffsetScaleByDistance;                 // near, nearScale, far, farScale
 attribute vec3 distanceDisplayConditionAndDisableDepth;    // near, far, disableDepthTestDistance
+attribute vec4 textureOffset;                              // the min and max x and y values for the texture coordinates
 #ifdef VECTOR_TILE
 attribute float a_batchId;
 #endif
 
 varying vec2 v_textureCoordinates;
+varying vec4 v_textureOffset;
+varying vec2 v_depthLookupTextureCoordinate1;
+varying vec2 v_depthLookupTextureCoordinate2;
+varying vec2 v_depthLookupTextureCoordinate3;
+varying vec2 v_dimensions;
+varying float v_eyeDepth;
 
 #ifdef RENDER_FOR_PICK
 varying vec4 v_pickColor;
@@ -119,6 +126,7 @@ void main()
     origin.y = floor(compressed * SHIFT_RIGHT3);
     compressed -= origin.y * SHIFT_LEFT3;
 
+    vec2 depthLookupST = origin.xy * 0.5;
     origin -= vec2(1.0);
 
     float show = floor(compressed * SHIFT_RIGHT2);
@@ -151,6 +159,12 @@ void main()
     temp = compressedAttribute1.x * SHIFT_RIGHT8;
 
     vec2 imageSize = vec2(floor(temp), compressedAttribute2.w);
+
+    v_textureOffset = textureOffset;
+    v_depthLookupTextureCoordinate1 = vec2(0.0, 1.0); //top left
+    v_depthLookupTextureCoordinate2 = vec2(1.0, 1.0); //top right
+    v_depthLookupTextureCoordinate3 = (0.0, 1.1) - depthLookupST; //a little above the origin
+    v_dimensions = imageSize.xy;
 
 #ifdef EYE_DISTANCE_TRANSLUCENCY
     vec4 translucencyByDistance;
@@ -201,6 +215,9 @@ void main()
 
     vec4 p = czm_translateRelativeToEye(positionHigh, positionLow);
     vec4 positionEC = czm_modelViewRelativeToEye * p;
+
+    v_eyeDepth = positionEC.z;
+
     positionEC = czm_eyeOffset(positionEC, eyeOffset.xyz);
     positionEC.xyz *= show;
 
