@@ -1557,7 +1557,7 @@ define([
             if (this._blendOption === BlendOption.OPAQUE || this._blendOption === BlendOption.OPAQUE_AND_TRANSLUCENT) {
                 this._rsOpaque = RenderState.fromCache({
                     depthTest : {
-                        enabled : false,
+                        enabled : true,
                         func : WebGLConstants.LESS
                     },
                     depthMask : true
@@ -1575,7 +1575,7 @@ define([
             if (this._blendOption === BlendOption.TRANSLUCENT || this._blendOption === BlendOption.OPAQUE_AND_TRANSLUCENT) {
                 this._rsTranslucent = RenderState.fromCache({
                     depthTest : {
-                        enabled : false,
+                        enabled : true,
                         func : (useTranslucentDepthMask ? WebGLConstants.LEQUAL : WebGLConstants.LESS)
                     },
                     depthMask : useTranslucentDepthMask,

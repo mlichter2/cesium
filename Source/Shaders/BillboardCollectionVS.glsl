@@ -161,9 +161,9 @@ void main()
     vec2 imageSize = vec2(floor(temp), compressedAttribute2.w);
 
     v_textureOffset = textureOffset;
-    v_depthLookupTextureCoordinate1 = vec2(0.0, 1.0); //top left
-    v_depthLookupTextureCoordinate2 = vec2(1.0, 1.0); //top right
-    v_depthLookupTextureCoordinate3 = (0.0, 1.1) - depthLookupST; //a little above the origin
+    v_depthLookupTextureCoordinate1 = (0.0, 0.9) - depthLookupST; //the origin
+    v_depthLookupTextureCoordinate2 = vec2(0.0, 1.0); //top left
+    v_depthLookupTextureCoordinate3 = vec2(1.0, 1.0); //top right
     v_dimensions = imageSize.xy;
 
 #ifdef EYE_DISTANCE_TRANSLUCENCY

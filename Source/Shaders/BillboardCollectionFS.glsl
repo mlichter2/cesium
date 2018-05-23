@@ -63,28 +63,35 @@ void main()
 
     czm_writeLogDepth();
 
-    vec2 adjustedST = v_textureCoordinates - v_textureOffset.xy;
-    adjustedST = adjustedST / (v_textureOffset.z - v_textureOffset.x, v_textureOffset.w - v_textureOffset.y);
+    if (v_eyeDepth > -4000.0) {
+        vec2 adjustedST = v_textureCoordinates - v_textureOffset.xy;
+        adjustedST = adjustedST / (v_textureOffset.z - v_textureOffset.x, v_textureOffset.w - v_textureOffset.y);
 
-    vec2 st1 = ((v_dimensions.xy * (v_depthLookupTextureCoordinate1 - adjustedST)) + gl_FragCoord.xy) / czm_viewport.zw;
-    vec2 st2 = ((v_dimensions.xy * (v_depthLookupTextureCoordinate2 - adjustedST)) + gl_FragCoord.xy) / czm_viewport.zw;
-    vec2 st3 = ((v_dimensions.xy * (v_depthLookupTextureCoordinate3 - adjustedST)) + gl_FragCoord.xy) / czm_viewport.zw;
+        vec2 st1 = ((v_dimensions.xy * (v_depthLookupTextureCoordinate1 - adjustedST)) + gl_FragCoord.xy) / czm_viewport.zw;
+        float logDepthOrDepth = czm_unpackDepth(texture2D(czm_globeDepthTexture, st1));
+        vec4 eyeCoordinate = czm_windowToEyeCoordinates(gl_FragCoord.xy, logDepthOrDepth);
+        float globeDepth1 = eyeCoordinate.z / eyeCoordinate.w;
 
-    float logDepthOrDepth = czm_unpackDepth(texture2D(czm_globeDepthTexture, st1));
-    vec4 eyeCoordinate = czm_windowToEyeCoordinates(gl_FragCoord.xy, logDepthOrDepth);
-    float globeDepth1 = eyeCoordinate.z / eyeCoordinate.w;
+        // negative values go into the screen
+        if (globeDepth1 > v_eyeDepth)
+        {
+            vec2 st2 = ((v_dimensions.xy * (v_depthLookupTextureCoordinate2 - adjustedST)) + gl_FragCoord.xy) / czm_viewport.zw;
+            logDepthOrDepth = czm_unpackDepth(texture2D(czm_globeDepthTexture, st2));
+            eyeCoordinate = czm_windowToEyeCoordinates(gl_FragCoord.xy, logDepthOrDepth);
+            float globeDepth2 = eyeCoordinate.z / eyeCoordinate.w;
 
-    logDepthOrDepth = czm_unpackDepth(texture2D(czm_globeDepthTexture, st2));
-    eyeCoordinate = czm_windowToEyeCoordinates(gl_FragCoord.xy, logDepthOrDepth);
-    float globeDepth2 = eyeCoordinate.z / eyeCoordinate.w;
+            if (globeDepth2 > v_eyeDepth)
+            {
+                vec2 st3 = ((v_dimensions.xy * (v_depthLookupTextureCoordinate3 - adjustedST)) + gl_FragCoord.xy) / czm_viewport.zw;
+                logDepthOrDepth = czm_unpackDepth(texture2D(czm_globeDepthTexture, st3));
+                eyeCoordinate = czm_windowToEyeCoordinates(gl_FragCoord.xy, logDepthOrDepth);
+                float globeDepth3 = eyeCoordinate.z / eyeCoordinate.w;
 
-    logDepthOrDepth = czm_unpackDepth(texture2D(czm_globeDepthTexture, st3));
-    eyeCoordinate = czm_windowToEyeCoordinates(gl_FragCoord.xy, logDepthOrDepth);
-    float globeDepth3 = eyeCoordinate.z / eyeCoordinate.w;
-
-    // negative values go into the screen
-    if (globeDepth1 > v_eyeDepth && globeDepth2 > v_eyeDepth && globeDepth3 > v_eyeDepth )
-    {
-        discard;
+                if (globeDepth3 > v_eyeDepth)
+                {
+                    discard;
+                }
+            }
+        }
     }
 }
