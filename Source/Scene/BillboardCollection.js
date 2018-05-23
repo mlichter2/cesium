@@ -219,6 +219,10 @@ define([
         this._compiledShaderDisableDepthDistance = false;
         this._compiledShaderDisableDepthDistancePick = false;
 
+        this._shaderClampToGround = false;
+        this._compiledShaderClampToGround = false;
+        this._compiledShaderClampToGroundPick = false;
+
         this._propertiesChanged = new Uint32Array(NUMBER_OF_PROPERTIES);
 
         this._maxSize = 0.0;
@@ -1193,7 +1197,13 @@ define([
             billboardCollection._shaderDistanceDisplayCondition = true;
         }
 
-        var disableDepthTestDistance = billboard.disableDepthTestDistance;
+        var disableDepthTestDistance;
+        if (billboard.heightReference === HeightReference.CLAMP_TO_GROUND) {
+            disableDepthTestDistance = 2000.0;
+        } else {
+            disableDepthTestDistance = billboard.disableDepthTestDistance;
+        }
+
         disableDepthTestDistance *= disableDepthTestDistance;
         if (disableDepthTestDistance > 0.0) {
             billboardCollection._shaderDisableDepthDistance = true;
@@ -1215,6 +1225,9 @@ define([
     }
 
     function writeTextureOffset(billboardCollection, context, textureAtlasCoordinates, vafWriters, billboard) {
+        if (billboard.heightReference === HeightReference.CLAMP_TO_GROUND) {
+            billboardCollection._shaderClampToGround = true;
+        }
         var i;
         var writer = vafWriters[attributeLocations.textureOffset];
 
@@ -1478,11 +1491,11 @@ define([
                 writers.push(writePixelOffsetScaleByDistance);
             }
 
-            if (properties[DISTANCE_DISPLAY_CONDITION_INDEX] || properties[DISABLE_DEPTH_DISTANCE]) {
+            if (properties[DISTANCE_DISPLAY_CONDITION_INDEX] || properties[DISABLE_DEPTH_DISTANCE] || properties[POSITION_INDEX]) {
                 writers.push(writeDistanceDisplayConditionAndDepthDisable);
             }
 
-            if (properties[IMAGE_INDEX_INDEX]) {
+            if (properties[IMAGE_INDEX_INDEX] || properties[POSITION_INDEX]) {
                 writers.push(writeTextureOffset);
             }
 
@@ -1601,7 +1614,8 @@ define([
             (this._shaderTranslucencyByDistance !== this._compiledShaderTranslucencyByDistance) ||
             (this._shaderPixelOffsetScaleByDistance !== this._compiledShaderPixelOffsetScaleByDistance) ||
             (this._shaderDistanceDisplayCondition !== this._compiledShaderDistanceDisplayCondition) ||
-            (this._shaderDisableDepthDistance !== this._compiledShaderDisableDepthDistance)) {
+            (this._shaderDisableDepthDistance !== this._compiledShaderDisableDepthDistance) ||
+            (this._shaderClampToGround !== this._compiledShaderClampToGround)) {
 
             vsSource = BillboardCollectionVS;
             fsSource = BillboardCollectionFS;
@@ -1641,6 +1655,9 @@ define([
             if (this._shaderDisableDepthDistance) {
                 vs.defines.push('DISABLE_DEPTH_DISTANCE');
             }
+            if (this._shaderClampToGround) {
+                vs.defines.push('CLAMP_TO_GROUND');
+            }
 
             var vectorFragDefine = defined(this._batchTable) ? 'VECTOR_TILE' : '';
 
@@ -1649,6 +1666,9 @@ define([
                     defines : ['OPAQUE', vectorFragDefine],
                     sources : [fsSource]
                 });
+                if (this._shaderClampToGround) {
+                    fs.defines.push('CLAMP_TO_GROUND');
+                }
                 this._sp = ShaderProgram.replaceCache({
                     context : context,
                     shaderProgram : this._sp,
@@ -1661,6 +1681,9 @@ define([
                     defines : ['TRANSLUCENT', vectorFragDefine],
                     sources : [fsSource]
                 });
+                if (this._shaderClampToGround) {
+                    fs.defines.push('CLAMP_TO_GROUND');
+                }
                 this._spTranslucent = ShaderProgram.replaceCache({
                     context : context,
                     shaderProgram : this._spTranslucent,
@@ -1675,6 +1698,9 @@ define([
                     defines : [vectorFragDefine],
                     sources : [fsSource]
                 });
+                if (this._shaderClampToGround) {
+                    fs.defines.push('CLAMP_TO_GROUND');
+                }
                 this._sp = ShaderProgram.replaceCache({
                     context : context,
                     shaderProgram : this._sp,
@@ -1689,6 +1715,9 @@ define([
                     defines : [vectorFragDefine],
                     sources : [fsSource]
                 });
+                if (this._shaderClampToGround) {
+                    fs.defines.push('CLAMP_TO_GROUND');
+                }
                 this._spTranslucent = ShaderProgram.replaceCache({
                     context : context,
                     shaderProgram : this._spTranslucent,
@@ -1705,6 +1734,7 @@ define([
             this._compiledShaderPixelOffsetScaleByDistance = this._shaderPixelOffsetScaleByDistance;
             this._compiledShaderDistanceDisplayCondition = this._shaderDistanceDisplayCondition;
             this._compiledShaderDisableDepthDistance = this._shaderDisableDepthDistance;
+            this._compiledShaderClampToGround = this._shaderClampToGround;
         }
 
         if (!defined(this._spPick) ||
@@ -1714,7 +1744,8 @@ define([
             (this._shaderTranslucencyByDistance !== this._compiledShaderTranslucencyByDistancePick) ||
             (this._shaderPixelOffsetScaleByDistance !== this._compiledShaderPixelOffsetScaleByDistancePick) ||
             (this._shaderDistanceDisplayCondition !== this._compiledShaderDistanceDisplayConditionPick) ||
-            (this._shaderDisableDepthDistance !== this._compiledShaderDisableDepthDistancePick)) {
+            (this._shaderDisableDepthDistance !== this._compiledShaderDisableDepthDistancePick) ||
+            (this._shaderClampToGround !== this._compiledShaderClampToGroundPick)) {
 
             vsSource = BillboardCollectionVS;
             fsSource = BillboardCollectionFS;
@@ -1757,11 +1788,17 @@ define([
             if (this._shaderDisableDepthDistance) {
                 vs.defines.push('DISABLE_DEPTH_DISTANCE');
             }
+            if (this._shaderClampToGround) {
+                vs.defines.push('CLAMP_TO_GROUND');
+            }
 
             fs = new ShaderSource({
                 defines : vertDefines,
                 sources : [fsSource]
             });
+            if (this._shaderClampToGround) {
+                fs.defines.push('CLAMP_TO_GROUND');
+            }
 
             this._spPick = ShaderProgram.replaceCache({
                 context : context,
@@ -1777,6 +1814,7 @@ define([
             this._compiledShaderPixelOffsetScaleByDistancePick = this._shaderPixelOffsetScaleByDistance;
             this._compiledShaderDistanceDisplayConditionPick = this._shaderDistanceDisplayCondition;
             this._compiledShaderDisableDepthDistancePick = this._shaderDisableDepthDistance;
+            this._compiledShaderClampToGroundPick = this._shaderClampToGround;
         }
 
         var va;

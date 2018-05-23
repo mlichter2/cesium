@@ -5,12 +5,15 @@ uniform vec4 u_highlightColor;
 #endif
 
 varying vec2 v_textureCoordinates;
+
+#ifdef CLAMP_TO_GROUND
 varying vec4 v_textureOffset;
 varying vec2 v_depthLookupTextureCoordinate1;
 varying vec2 v_depthLookupTextureCoordinate2;
 varying vec2 v_depthLookupTextureCoordinate3;
 varying vec2 v_dimensions;
 varying float v_eyeDepth;
+#endif
 
 #ifdef RENDER_FOR_PICK
 varying vec4 v_pickColor;
@@ -20,7 +23,6 @@ varying vec4 v_color;
 
 void main()
 {
-
 #ifdef RENDER_FOR_PICK
     vec4 vertexColor = vec4(1.0, 1.0, 1.0, 1.0);
 #else
@@ -63,7 +65,8 @@ void main()
 
     czm_writeLogDepth();
 
-    if (v_eyeDepth > -4000.0) {
+#ifdef CLAMP_TO_GROUND
+    if (v_eyeDepth > -2000.0) {
         vec2 adjustedST = v_textureCoordinates - v_textureOffset.xy;
         adjustedST = adjustedST / (v_textureOffset.z - v_textureOffset.x, v_textureOffset.w - v_textureOffset.y);
 
@@ -73,25 +76,27 @@ void main()
         float globeDepth1 = eyeCoordinate.z / eyeCoordinate.w;
 
         // negative values go into the screen
-        if (globeDepth1 > v_eyeDepth)
+        if (globeDepth1 > v_eyeDepth + czm_epsilon5)
         {
             vec2 st2 = ((v_dimensions.xy * (v_depthLookupTextureCoordinate2 - adjustedST)) + gl_FragCoord.xy) / czm_viewport.zw;
             logDepthOrDepth = czm_unpackDepth(texture2D(czm_globeDepthTexture, st2));
             eyeCoordinate = czm_windowToEyeCoordinates(gl_FragCoord.xy, logDepthOrDepth);
             float globeDepth2 = eyeCoordinate.z / eyeCoordinate.w;
 
-            if (globeDepth2 > v_eyeDepth)
+            if (globeDepth2 > v_eyeDepth + czm_epsilon5)
             {
                 vec2 st3 = ((v_dimensions.xy * (v_depthLookupTextureCoordinate3 - adjustedST)) + gl_FragCoord.xy) / czm_viewport.zw;
                 logDepthOrDepth = czm_unpackDepth(texture2D(czm_globeDepthTexture, st3));
                 eyeCoordinate = czm_windowToEyeCoordinates(gl_FragCoord.xy, logDepthOrDepth);
                 float globeDepth3 = eyeCoordinate.z / eyeCoordinate.w;
 
-                if (globeDepth3 > v_eyeDepth)
+                if (globeDepth3 > v_eyeDepth + czm_epsilon5)
                 {
                     discard;
                 }
             }
         }
     }
+#endif
+
 }

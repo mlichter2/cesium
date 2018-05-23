@@ -10,18 +10,22 @@ attribute vec4 eyeOffset;                                  // eye offset in mete
 attribute vec4 scaleByDistance;                            // near, nearScale, far, farScale
 attribute vec4 pixelOffsetScaleByDistance;                 // near, nearScale, far, farScale
 attribute vec3 distanceDisplayConditionAndDisableDepth;    // near, far, disableDepthTestDistance
+#ifdef CLAMP_TO_GROUND
 attribute vec4 textureOffset;                              // the min and max x and y values for the texture coordinates
+#endif
 #ifdef VECTOR_TILE
 attribute float a_batchId;
 #endif
 
 varying vec2 v_textureCoordinates;
+#ifdef CLAMP_TO_GROUND
 varying vec4 v_textureOffset;
 varying vec2 v_depthLookupTextureCoordinate1;
 varying vec2 v_depthLookupTextureCoordinate2;
 varying vec2 v_depthLookupTextureCoordinate3;
 varying vec2 v_dimensions;
 varying float v_eyeDepth;
+#endif
 
 #ifdef RENDER_FOR_PICK
 varying vec4 v_pickColor;
@@ -126,7 +130,9 @@ void main()
     origin.y = floor(compressed * SHIFT_RIGHT3);
     compressed -= origin.y * SHIFT_LEFT3;
 
+#ifdef CLAMP_TO_GROUND
     vec2 depthLookupST = origin.xy * 0.5;
+#endif
     origin -= vec2(1.0);
 
     float show = floor(compressed * SHIFT_RIGHT2);
@@ -160,11 +166,13 @@ void main()
 
     vec2 imageSize = vec2(floor(temp), compressedAttribute2.w);
 
+#ifdef CLAMP_TO_GROUND
     v_textureOffset = textureOffset;
     v_depthLookupTextureCoordinate1 = (0.0, 0.9) - depthLookupST; //the origin
     v_depthLookupTextureCoordinate2 = vec2(0.0, 1.0); //top left
     v_depthLookupTextureCoordinate3 = vec2(1.0, 1.0); //top right
     v_dimensions = imageSize.xy;
+#endif
 
 #ifdef EYE_DISTANCE_TRANSLUCENCY
     vec4 translucencyByDistance;
@@ -216,7 +224,9 @@ void main()
     vec4 p = czm_translateRelativeToEye(positionHigh, positionLow);
     vec4 positionEC = czm_modelViewRelativeToEye * p;
 
+#ifdef CLAMP_TO_GROUND
     v_eyeDepth = positionEC.z;
+#endif
 
     positionEC = czm_eyeOffset(positionEC, eyeOffset.xyz);
     positionEC.xyz *= show;
@@ -309,4 +319,5 @@ void main()
     v_color = color;
     v_color.a *= translucency;
 #endif
+
 }
