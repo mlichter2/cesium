@@ -1197,11 +1197,9 @@ define([
             billboardCollection._shaderDistanceDisplayCondition = true;
         }
 
-        var disableDepthTestDistance;
-        if (billboard.heightReference === HeightReference.CLAMP_TO_GROUND) {
+        var disableDepthTestDistance = billboard.disableDepthTestDistance;
+        if (billboard.heightReference === HeightReference.CLAMP_TO_GROUND && disableDepthTestDistance === 0.0) {
             disableDepthTestDistance = 2000.0;
-        } else {
-            disableDepthTestDistance = billboard.disableDepthTestDistance;
         }
 
         disableDepthTestDistance *= disableDepthTestDistance;
